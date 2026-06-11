@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financing Eligibility Pre-Screen</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0e2440; --navy-2:#16335c; --ink:#0b1726;
+    --amber:#e8a33d; --amber-deep:#c97f1e;
+    --paper:#f6f4ef; --card:#ffffff; --line:#e3ddd2;
+    --muted:#6b7686; --green:#1f8a5b; --green-bg:#e7f4ec;
+    --yellow:#b8860b; --yellow-bg:#fbf3dd; --red:#b3402f; --red-bg:#fbe9e6;
+    --shadow:0 10px 30px rgba(14,36,64,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--paper); color:var(--ink); line-height:1.5;
+    min-height:100vh;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px 48px;}
+
+  /* Header */
+  header{
+    background:var(--navy); color:#fff; border-radius:0 0 18px 18px;
+    padding:18px 20px 16px; box-shadow:var(--shadow); position:sticky; top:0; z-index:10;
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{
+    width:40px;height:40px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--amber),var(--amber-deep));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:var(--ink);font-size:18px;letter-spacing:-.5px;
+  }
+  .brand h1{font-size:16px;margin:0;line-height:1.15;font-weight:700}
+  .brand p{margin:2px 0 0;font-size:11.5px;color:#9db4d4;letter-spacing:.3px;text-transform:uppercase}
+  .progress-shell{margin-top:14px;height:6px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden}
+  .progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--amber),var(--amber-deep));border-radius:99px;transition:width .35s ease}
+  .step-label{margin-top:7px;font-size:11px;color:#9db4d4;display:flex;justify-content:space-between}
+
+  /* Cards / screens */
+  main{margin-top:18px}
+  .screen{display:none;animation:rise .35s ease both}
+  .screen.active{display:block}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .q-eyebrow{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber-deep);font-weight:700;margin-bottom:8px}
+  .q-title{font-size:23px;font-weight:750;letter-spacing:-.4px;margin:0 0 4px;line-height:1.2;color:var(--ink)}
+  .q-sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+
+  .opts{display:flex;flex-direction:column;gap:11px}
+  .opt{
+    appearance:none;border:1.5px solid var(--line);background:var(--card);
+    border-radius:14px;padding:16px 18px;text-align:left;cursor:pointer;
+    font-size:15.5px;font-weight:600;color:var(--ink);transition:.15s;
+    display:flex;align-items:center;gap:13px;width:100%;font-family:inherit;
+  }
+  .opt:hover{border-color:var(--navy-2);transform:translateY(-1px);box-shadow:0 6px 16px rgba(14,36,64,.08)}
+  .opt:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .opt .dot{width:22px;height:22px;border-radius:99px;border:2px solid var(--line);flex:0 0 auto;transition:.15s}
+  .opt.sel{border-color:var(--amber-deep);background:#fffaf0}
+  .opt.sel .dot{border-color:var(--amber-deep);background:var(--amber);box-shadow:inset 0 0 0 3px #fff}
+  .opt small{display:block;font-weight:500;color:var(--muted);font-size:12.5px;margin-top:2px}
+
+  /* Form fields */
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:var(--ink)}
+  .field label .opt-tag{color:var(--muted);font-weight:500}
+  .field input{
+    width:100%;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;
+    font-size:15px;font-family:inherit;background:var(--card);color:var(--ink);
+  }
+  .field input:focus{outline:none;border-color:var(--amber-deep);box-shadow:0 0 0 3px #fbe9c9}
+
+  /* Nav */
+  .nav{display:flex;gap:10px;margin-top:24px}
+  .btn{
+    font-family:inherit;font-size:15px;font-weight:700;border-radius:12px;
+    padding:13px 18px;cursor:pointer;border:1.5px solid transparent;transition:.15s;
+  }
+  .btn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .btn-primary{background:var(--navy);color:#fff;flex:1}
+  .btn-primary:hover{background:var(--navy-2)}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--line)}
+  .btn-ghost:hover{color:var(--ink);border-color:var(--navy-2)}
+  .btn-amber{background:linear-gradient(135deg,var(--amber),var(--amber-deep));color:var(--ink);flex:1}
+  .btn-amber:hover{filter:brightness(1.04)}
+
+  /* Results */
+  .res-head{text-align:center;margin-bottom:18px}
+  .res-head .q-eyebrow{margin-bottom:6px}
+  .res-head h2{font-size:24px;margin:0;font-weight:780;letter-spacing:-.4px}
+  .res-client{font-size:13.5px;color:var(--muted);margin-top:4px}
+
+  .verdict{
+    border:1px solid var(--line);border-left-width:5px;border-radius:14px;
+    background:var(--card);padding:16px 17px;margin-bottom:13px;box-shadow:var(--shadow);
+  }
+  .verdict.ok{border-left-color:var(--green)}
+  .verdict.warn{border-left-color:var(--yellow)}
+  .verdict.no{border-left-color:var(--red)}
+  .v-top{display:flex;align-items:flex-start;gap:11px}
+  .v-icon{font-size:20px;line-height:1.2;flex:0 0 auto}
+  .v-prod{font-size:16px;font-weight:750;letter-spacing:-.2px}
+  .v-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;
+    padding:3px 9px;border-radius:99px;margin-top:5px;text-transform:uppercase}
+  .v-tag.ok{background:var(--green-bg);color:var(--green)}
+  .v-tag.warn{background:var(--yellow-bg);color:var(--yellow)}
+  .v-tag.no{background:var(--red-bg);color:var(--red)}
+  .v-row{font-size:13.5px;margin-top:10px;color:var(--ink)}
+  .v-row b{color:var(--ink)}
+  .v-row .lbl{color:var(--muted);font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;display:block;margin-bottom:1px}
+
+  .followup{
+    background:var(--navy);color:#fff;border-radius:16px;padding:18px 19px;margin:20px 0 6px;box-shadow:var(--shadow);
+  }
+  .followup h3{margin:0 0 4px;font-size:16px;font-weight:750;display:flex;align-items:center;gap:8px}
+  .followup .fsub{font-size:12.5px;color:#9db4d4;margin:0 0 14px}
+  .fu-item{border-top:1px solid rgba(255,255,255,.12);padding:12px 0}
+  .fu-item:first-of-type{border-top:none;padding-top:2px}
+  .fu-prod{font-size:13.5px;font-weight:750;color:var(--amber)}
+  .fu-need{font-size:13px;color:#dfe7f2;margin-top:3px}
+  .fu-date{font-size:12.5px;margin-top:6px;display:inline-flex;align-items:center;gap:6px;
+    background:rgba(232,163,61,.16);color:#f3c987;padding:4px 10px;border-radius:99px;font-weight:700}
+  .fu-empty{font-size:13px;color:#dfe7f2}
+
+  .disclaimer{font-size:11.5px;color:var(--muted);text-align:center;margin:18px 6px 0;line-height:1.45}
+
+  .result-actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+  .result-actions .btn-amber,.result-actions .btn-ghost{flex:none;width:100%}
+
+  .footnote{text-align:center;font-size:11px;color:var(--muted);margin-top:26px}
+  .err{color:var(--red);font-size:12.5px;margin-top:8px;font-weight:600;display:none}
+  .err.show{display:block}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">FE</div>
+    <div>
+      <h1>Financing Eligibility Pre-Screen</h1>
+      <p>Internal Sales Tool</p>
+    </div>
+  </div>
+  <div class="progress-shell"><div class="progress-bar" id="bar"></div></div>
+  <div class="step-label"><span id="stepName">Getting started</span><span id="stepCount"></span></div>
+</header>
+
+<div class="wrap">
+<main id="main"><!-- screens injected here --></main>
+<div class="footnote">No data leaves this browser. Report is generated on your device.</div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+/* ---------------- State ---------------- */
+const S = {
+  client:{name:'',email:'',phone:'',date:todayISO()},
+  goal:null,
+  answers:{}
+};
+function todayISO(){const d=new Date();return d.toISOString().slice(0,10);}
+function fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return iso;
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function addMonths(iso,m){ const d=new Date(iso+'T00:00:00'); d.setMonth(d.getMonth()+m); return d.toISOString().slice(0,10); }
+
+/* ---------------- Flow definition ----------------
+   Each step: {id, name, render()} pushed onto a stack as we go. */
+const main = document.getElementById('main');
+const bar = document.getElementById('bar');
+const stepName = document.getElementById('stepName');
+const stepCount = document.getElementById('stepCount');
+
+let history = [];   // stack of step ids visited
+let estTotal = 6;   // estimated steps for progress (updates per branch)
+
+/* Build the ordered list of steps dynamically based on answers */
+function buildPlan(){
+  const plan = ['intro','goal'];
+  switch(S.goal){
+    case 'cli':
+      plan.push('cli_age');
+      if(S.answers.cli_age==='6plus') plan.push('cli_ontime');
+      if(S.answers.cli_age==='6plus' && S.answers.cli_ontime==='yes') plan.push('cli_util');
+      break;
+    case 'personal':
+      plan.push('p_score','p_dti','p_velocity');
+      break;
+    case 'business':
+      plan.push('b_product');
+      if(S.answers.b_product==='bloc') plan.push('b_tib','b_revann','b_score');
+      if(S.answers.b_product==='mca') plan.push('b_mdeposit','b_acctage','b_consistent','b_flags');
+      if(S.answers.b_product==='term') plan.push('b_tib','b_revann','b_score','b_docs');
+      break;
+    case 'mortgage':
+      plan.push('m_score','m_down','m_dti','m_emp','m_jumbo');
+      break;
+  }
+  plan.push('results');
+  return plan;
+}
+
+/* ---------------- Screen renderers ---------------- */
+function choice(id, eyebrow, title, sub, options){
+  // options: [{val,label,desc}]
+  const cur = S.answers[id];
+  return {
+    id, name:eyebrow,
+    html:`
+      <div class="q-eyebrow">${eyebrow}</div>
+      <h2 class="q-title">${title}</h2>
+      ${sub?`<p class="q-sub">${sub}</p>`:''}
+      <div class="opts">
+        ${options.map(o=>`
+          <button class="opt ${cur===o.val?'sel':''}" data-val="${o.val}">
+            <span class="dot"></span>
+            <span>${o.label}${o.desc?`<small>${o.desc}</small>`:''}</span>
+          </button>`).join('')}
+      </div>`,
+    wire(el, advance){
+      el.querySelectorAll('.opt').forEach(b=>{
+        b.onclick=()=>{ S.answers[id]=b.dataset.val; advance(); };
+      });
+    },
+    autoAdvance:true
+  };
+}
+
+const SCREENS = {
+  intro(){
+    return {
+      id:'intro', name:'Client details',
+      html:`
+        <div class="q-eyebrow">Step 1 — Client details</div>
+        <h2 class="q-title">Who are we screening?</h2>
+        <p class="q-sub">Used only to fill in the report. Nothing is sent anywhere.</p>
+        <div class="field">
+          <label>Client name</label>
+          <input id="f_name" type="text" placeholder="e.g. Maria Gonzalez" value="${esc(S.client.name)}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Email <span class="opt-tag">(optional)</span></label>
+          <input id="f_email" type="email" placeholder="name@email.com" value="${esc(S.client.email)}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Phone <span class="opt-tag">(optional)</span></label>
+          <input id="f_phone" type="tel" placeholder="(555) 555-5555" value="${esc(S.client.phone)}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input id="f_date" type="date" value="${S.client.date}">
+        </div>
+        <div class="err" id="introErr">Enter a client name to continue.</div>`,
+      wire(el, advance){
+        const save=()=>{
+          S.client.name=el.querySelector('#f_name').value.trim();
+          S.client.email=el.querySelector('#f_email').value.trim();
+          S.client.phone=el.querySelector('#f_phone').value.trim();
+          S.client.date=el.querySelector('#f_date').value||todayISO();
+        };
+        el.querySelectorAll('input').forEach(i=>i.addEventListener('input',save));
+      },
+      next(el){
+        const n=el.querySelector('#f_name').value.trim();
+        if(!n){ el.querySelector('#introErr').classList.add('show'); return false; }
+        return true;
+      }
+    };
+  },
+  goal(){
+    const cur=S.goal;
+    return {
+      id:'goal', name:'Financing goal',
+      html:`
+        <div class="q-eyebrow">Step 2 — The ask</div>
+        <h2 class="q-title">What is the client seeking?</h2>
+        <p class="q-sub">Pick one to branch into the right questions.</p>
+        <div class="opts">
+          ${[
+            {val:'personal',label:'Personal financing',desc:'Credit card or personal loan'},
+            {val:'business',label:'Business financing',desc:'BLOC, MCA, or term loan'},
+            {val:'mortgage',label:'Mortgage',desc:'Home purchase or refinance'},
+            {val:'cli',label:'Credit limit increase',desc:'On an existing card'}
+          ].map(o=>`<button class="opt ${cur===o.val?'sel':''}" data-val="${o.val}">
+              <span class="dot"></span><span>${o.label}<small>${o.desc}</small></span></button>`).join('')}
+        </div>`,
+      wire(el, advance){
+        el.querySelectorAll('.opt').forEach(b=>{
+          b.onclick=()=>{ if(S.goal!==b.dataset.val){ S.goal=b.dataset.val; S.answers={}; } advance(); };
+        });
+      },
+      autoAdvance:true
+    };
+  },
+
+  /* ---- Credit Limit Increase ---- */
+  cli_age(){ return choice('cli_age','Credit limit increase','How long has the card been open?','',[
+    {val:'lt3',label:'Less than 3 months'},
+    {val:'3to6',label:'3 to 6 months'},
+    {val:'6plus',label:'6 months or more'}
+  ]); },
+  cli_ontime(){ return choice('cli_ontime','Credit limit increase','Payment history on this card?','',[
+    {val:'yes',label:'All payments on time'},
+    {val:'no',label:'Has missed / late payments'}
+  ]); },
+  cli_util(){ return choice('cli_util','Credit limit increase','Current utilization on the card?','How much of the limit is in use.',[
+    {val:'under30',label:'Under 30%'},
+    {val:'over30',label:'30% or higher'}
+  ]); },
+
+  /* ---- Personal ---- */
+  p_score(){ return choice('p_score','Personal financing','Credit score band?','',[
+    {val:'lt580',label:'Below 580',desc:'Poor'},
+    {val:'580to699',label:'580 – 699',desc:'Fair to good'},
+    {val:'700plus',label:'700 or above',desc:'Very good to excellent'}
+  ]); },
+  p_dti(){ return choice('p_dti','Personal financing','Debt-to-income ratio (DTI)?','Monthly debt payments ÷ gross monthly income.',[
+    {val:'ok',label:'At or below 43%'},
+    {val:'high',label:'Above 43–45%'}
+  ]); },
+  p_velocity(){ return choice('p_velocity','Personal financing','New cards opened in the last 12 months?','',[
+    {val:'low',label:'2 or fewer'},
+    {val:'high',label:'3 or more',desc:'Application-velocity risk'}
+  ]); },
+
+  /* ---- Business ---- */
+  b_product(){ return choice('b_product','Business financing','Which product is the client interested in?','',[
+    {val:'bloc',label:'Business line of credit (BLOC)'},
+    {val:'mca',label:'Merchant cash advance (MCA)'},
+    {val:'term',label:'Business term loan (bank)'}
+  ]); },
+  b_tib(){ return choice('b_tib','Business financing','Time in business?','',[
+    {val:'lt3',label:'Less than 3 months'},
+    {val:'3to6',label:'3 to 6 months'},
+    {val:'6to12',label:'6 to 12 months'},
+    {val:'1to2',label:'1 to 2 years'},
+    {val:'2plus',label:'2 years or more'}
+  ]); },
+  b_revann(){ return choice('b_revann','Business financing','Annual business revenue?','',[
+    {val:'lt30',label:'Under $30K'},
+    {val:'30to50',label:'$30K – $50K'},
+    {val:'50to100',label:'$50K – $100K'},
+    {val:'100plus',label:'$100K or more'}
+  ]); },
+  b_score(){ return choice('b_score','Business financing','Owner\u2019s personal credit score?','',[
+    {val:'lt600',label:'Below 600'},
+    {val:'600to679',label:'600 – 679'},
+    {val:'680plus',label:'680 or above'}
+  ]); },
+  b_docs(){ return choice('b_docs','Business financing','Documentation ready?','Tax returns, financials, bank statements.',[
+    {val:'yes',label:'Yes — full docs available'},
+    {val:'no',label:'No / incomplete'}
+  ]); },
+  b_mdeposit(){ return choice('b_mdeposit','Merchant cash advance','Average monthly bank deposits?','MCAs are revenue-driven.',[
+    {val:'lt8',label:'Under $8K'},
+    {val:'8to15',label:'$8K – $15K'},
+    {val:'15plus',label:'$15K or more'}
+  ]); },
+  b_acctage(){ return choice('b_acctage','Merchant cash advance','Business bank account open how long?','',[
+    {val:'lt3',label:'Less than 3 months'},
+    {val:'3plus',label:'3 months or more'}
+  ]); },
+  b_consistent(){ return choice('b_consistent','Merchant cash advance','Are deposits consistent month to month?','',[
+    {val:'yes',label:'Yes — steady'},
+    {val:'no',label:'No — irregular'}
+  ]); },
+  b_flags(){ return choice('b_flags','Merchant cash advance','Any of these present?','Open bankruptcy, unresolved lien/judgment, prior MCA default, or heavy stacking.',[
+    {val:'none',label:'None of these'},
+    {val:'some',label:'One or more present'}
+  ]); },
+
+  /* ---- Mortgage ---- */
+  m_score(){ return choice('m_score','Mortgage','Credit score?','',[
+    {val:'lt500',label:'Below 500'},
+    {val:'500to619',label:'500 – 619'},
+    {val:'620to699',label:'620 – 699'},
+    {val:'700plus',label:'700 or above'}
+  ]); },
+  m_down(){ return choice('m_down','Mortgage','Down payment available?','',[
+    {val:'lt3',label:'Under 3%'},
+    {val:'3to5',label:'3% – 5%'},
+    {val:'5to10',label:'5% – 10%'},
+    {val:'10to20',label:'10% – 20%'},
+    {val:'20plus',label:'20% or more'}
+  ]); },
+  m_dti(){ return choice('m_dti','Mortgage','Debt-to-income ratio (DTI)?','',[
+    {val:'ok',label:'At or below 43%'},
+    {val:'mid',label:'43% – 50%',desc:'May need compensating factors'},
+    {val:'high',label:'Above 50%'}
+  ]); },
+  m_emp(){ return choice('m_emp','Mortgage','Employment / income history?','',[
+    {val:'2plus',label:'2 years or more, steady'},
+    {val:'lt2',label:'Less than 2 years'}
+  ]); },
+  m_jumbo(){ return choice('m_jumbo','Mortgage','Loan amount above ~$766,550?','Jumbo loans have stricter thresholds.',[
+    {val:'no',label:'No — conforming'},
+    {val:'yes',label:'Yes — jumbo range'}
+  ]); },
+
+  results(){ return {id:'results', name:'Results', results:true}; }
+};
+
+/* ---------------- Eligibility engine ---------------- */
+function evaluate(){
+  const out=[];        // verdicts
+  const follow=[];     // follow-up items
+  const a=S.answers, cd=S.client.date;
+  const push=(prod,level,factor,step)=>out.push({prod,level,factor,step});
+  // level: 'ok' | 'warn' | 'no'
+
+  if(S.goal==='cli'){
+    const prod='Credit Limit Increase';
+    if(a.cli_age==='lt3'){
+      push(prod,'no','Card open under 3 months — most issuers require 3–6 months of history.','Decline for now; revisit at the 3-month mark.');
+      follow.push({prod, need:'Card needs at least 3 months of history before a CLI request.',
+        date:addMonths(cd,3), note:'Re-check 3 months from today (or from card-open date if known).'});
+    } else if(a.cli_age==='3to6'){
+      push(prod,'warn','3–6 months of history — possible only with soft-pull issuers (Amex, Chase, Citi, Discover) and a clean payment record.','Escalate: attempt a soft-pull CLI; confirm clean payments first.');
+      follow.push({prod, need:'Reaches the stronger 6-month window soon. Confirm on-time payments and keep utilization under 30%.',
+        date:addMonths(cd,3), note:'Re-screen near the 6-month mark for a hard-pull-free increase.'});
+    } else { // 6plus
+      if(a.cli_ontime==='no'){
+        push(prod,'no','6+ months open but payment history is not clean.','Decline; rebuild on-time record before requesting.');
+        follow.push({prod, need:'Needs a clean recent payment record (aim for 6 consecutive on-time payments).',
+          date:addMonths(cd,6), note:'Re-screen after ~6 months of on-time payments.'});
+      } else if(a.cli_util==='over30'){
+        push(prod,'warn','On-time and seasoned, but utilization is 30% or higher.','Escalate after paying balance below 30%, then request.');
+        follow.push({prod, need:'Pay the card below 30% utilization, then request.',
+          date:addMonths(cd,1), note:'Re-check after the next statement shows utilization under 30%.'});
+      } else {
+        push(prod,'ok','6+ months, on-time payments, utilization under 30%.','Proceed. Submit the increase request — one request per ~6 months.');
+      }
+    }
+  }
+
+  if(S.goal==='personal'){
+    const prod='Personal Financing';
+    let level, factor, step;
+    if(a.p_score==='lt580'){
+      level='no'; factor='Score below 580 — does not meet prime-product thresholds.';
+      step='Decline prime products; offer a secured card or credit-builder loan.';
+    } else if(a.p_score==='580to699'){
+      level='warn'; factor='Score 580–699 — approvable but at higher rates.';
+      step='Proceed with non-prime/fair-credit options; set rate expectations.';
+    } else {
+      level='ok'; factor='Score 700+ — qualifies for best terms.';
+      step='Proceed with prime products.';
+    }
+    // DTI drops one level
+    let dtiFlag=false;
+    if(a.p_dti==='high'){
+      dtiFlag=true;
+      if(level==='ok'){ level='warn'; }
+      else if(level==='warn'){ level='no'; }
+      factor += ' DTI above 43–45% — affordability is a concern.';
+      step = level==='no' ? 'Decline until DTI improves; document affordability.' : step+' Verify affordability given high DTI.';
+    }
+    if(a.p_velocity==='high'){
+      factor += ' 3+ new cards in 12 months — application-velocity risk.';
+      if(level==='ok'){ level='warn'; step='Proceed cautiously; recent inquiries may dent approval/limits.'; }
+    }
+    push(prod,level,factor,step);
+
+    if(level!=='ok'){
+      const needs=[];
+      if(a.p_score==='lt580') needs.push('Raise score to 580+ (then 700+ for best terms).');
+      else if(a.p_score==='580to699') needs.push('Lift score toward 700+ for prime rates.');
+      if(dtiFlag) needs.push('Bring DTI to 43% or below.');
+      if(a.p_velocity==='high') needs.push('Let recent inquiries age — avoid new applications for ~6–12 months.');
+      follow.push({prod, need:needs.join(' '),
+        date:addMonths(cd, a.p_score==='lt580'?6:3),
+        note: a.p_score==='lt580'
+          ? 'Re-screen when score reaches 580+ (≈6 months of credit-building).'
+          : 'Re-screen in ~3 months as score and DTI improve.'});
+    }
+  }
+
+  if(S.goal==='business'){
+    if(a.b_product==='bloc'){
+      const prod='Business Line of Credit';
+      let level,factor,step;
+      const tooNew = (a.b_tib==='lt3');
+      const lowScore = (a.b_score==='lt600');
+      if(tooNew || lowScore){
+        level='no';
+        factor = lowScore && tooNew ? 'Score under 600 and under 3 months in business.'
+               : lowScore ? 'Owner score under 600 — below BLOC minimum (~600+).'
+               : 'Under 3 months in business — lenders want 6–12+ months.';
+        step='Decline now; build the missing piece and revisit.';
+      } else {
+        // seasoning + revenue
+        const seasoned = (a.b_tib==='6to12'||a.b_tib==='1to2'||a.b_tib==='2plus');
+        const revOK = (a.b_revann==='50to100'||a.b_revann==='100plus'||a.b_revann==='30to50');
+        if(seasoned && (a.b_revann==='100plus') && a.b_score==='680plus'){
+          level='ok'; factor='680+ score, 6–12+ months in business, $100K+ revenue — meets bank-grade BLOC criteria.';
+          step='Proceed; bank or fintech BLOC both in play.';
+        } else if(seasoned && revOK){
+          level='warn';
+          factor='Meets baseline BLOC criteria but ';
+          factor += a.b_score==='600to679' ? 'score 600–679 favors fintech lenders over banks. ' : '';
+          factor += (a.b_revann==='30to50'||a.b_revann==='50to100') ? 'Revenue under the $100K banks prefer.' : '';
+          step='Escalate to fintech/non-bank BLOC; banks need $100K+ revenue and 680+.';
+        } else {
+          level='warn';
+          factor='Borderline — ';
+          factor += (a.b_tib==='3to6') ? 'only 3–6 months in business (6+ preferred); ' : '';
+          factor += (a.b_revann==='lt30') ? 'revenue under $30K (lenders want $30K–$50K+).' : '';
+          step='Escalate to underwriting; likely needs more seasoning or revenue.';
+        }
+      }
+      push(prod,level,factor,step);
+      if(level!=='ok'){
+        const needs=[]; let mDate=addMonths(cd,2);
+        if(tooNew){ needs.push('Reach 6 months in business.'); mDate=addMonths(cd,5); }
+        else if(a.b_tib==='3to6'){ needs.push('Reach the 6-month mark for BLOC review.'); mDate=addMonths(cd,2); }
+        if(lowScore) { needs.push('Raise owner score to 600+ (680+ for banks).'); mDate=addMonths(cd,4); }
+        else if(a.b_score==='600to679') needs.push('Lift score to 680+ to unlock bank BLOCs.');
+        if(a.b_revann==='lt30'||a.b_revann==='30to50') needs.push('Grow annual revenue toward $100K for bank terms.');
+        follow.push({prod, need:needs.join(' '), date:mDate,
+          note: tooNew||a.b_tib==='3to6' ? 'Eligible for BLOC review at the 6-month mark.' : 'Re-screen as score/revenue improve.'});
+      }
+    }
+
+    if(a.b_product==='mca'){
+      const prod='Merchant Cash Advance';
+      let level,factor,step;
+      if(a.b_flags==='some'){
+        level='no'; factor='Auto-decline factor present (open bankruptcy, unresolved lien/judgment, prior MCA default, or heavy stacking).';
+        step='Decline; resolve the blocking item before any MCA submission.';
+      } else if(a.b_acctage==='lt3'){
+        level='no'; factor='Business bank account open under 3 months — funders require 3+ months of statements.';
+        step='Decline now; revisit once the account has 3+ months of history.';
+      } else if(a.b_mdeposit==='lt8'){
+        level='warn'; factor='Deposits under ~$8K/month — below typical MCA appetite ($10K–$15K+, some accept $5K).';
+        step='Escalate to $5K-minimum funders; otherwise grow deposits.';
+      } else if(a.b_consistent==='no'){
+        level='warn'; factor='Deposit volume is fine but month-to-month consistency is weak.';
+        step='Escalate; funders may offer a smaller advance against irregular deposits.';
+      } else {
+        level='ok'; factor='$8K+ consistent monthly deposits, account 3+ months old, no blocking flags. Credit is largely irrelevant.';
+        step='Proceed; MCA is revenue-driven and a strong fit.';
+      }
+      push(prod,level,factor,step);
+      if(level!=='ok'){
+        const needs=[]; let mDate=addMonths(cd,2);
+        if(a.b_flags==='some'){ needs.push('Clear the blocking item (bankruptcy/lien/judgment/default/stacking).'); mDate=addMonths(cd,6); }
+        if(a.b_acctage==='lt3'){ needs.push('Reach 3 months of business bank-account history.'); mDate=addMonths(cd,3); }
+        if(a.b_mdeposit==='lt8') needs.push('Grow monthly deposits to ~$8K–$15K+.');
+        if(a.b_consistent==='no') needs.push('Establish steady month-to-month deposits.');
+        follow.push({prod, need:needs.join(' '), date:mDate,
+          note:'Re-screen once deposits/account history meet MCA minimums.'});
+      }
+    }
+
+    if(a.b_product==='term'){
+      const prod='Business Term Loan (Bank)';
+      let level,factor,step;
+      const yrs2 = (a.b_tib==='2plus');
+      const strongScore = (a.b_score==='680plus');
+      const strongRev = (a.b_revann==='100plus');
+      if(a.b_tib==='lt3' || a.b_score==='lt600'){
+        level='no'; factor='Bank term loans are the strictest tier — under 3 months in business or sub-600 credit is an automatic pass.';
+        step='Decline; redirect to BLOC or MCA, revisit term loan later.';
+      } else if(yrs2 && strongScore && strongRev && a.b_docs==='yes'){
+        level='ok'; factor='2+ years in business, strong credit, solid revenue, full documentation.';
+        step='Proceed to bank submission.';
+      } else {
+        level='warn';
+        const gaps=[];
+        if(!yrs2) gaps.push('under 2 years in business');
+        if(!strongScore) gaps.push('credit below the bank-preferred 680+');
+        if(!strongRev) gaps.push('revenue under $100K');
+        if(a.b_docs!=='yes') gaps.push('incomplete documentation');
+        factor='Borderline for a bank term loan — '+gaps.join(', ')+'.';
+        step='Escalate to underwriting; or pursue BLOC/MCA in the meantime.';
+      }
+      push(prod,level,factor,step);
+      if(level!=='ok'){
+        const needs=[]; let mDate=addMonths(cd,6);
+        if(a.b_tib!=='2plus'){ needs.push('Reach 2 years in business.');
+          mDate = a.b_tib==='1to2'?addMonths(cd,6):addMonths(cd,12); }
+        if(a.b_score!=='680plus') needs.push('Build credit to 680+.');
+        if(a.b_revann!=='100plus') needs.push('Grow revenue to $100K+.');
+        if(a.b_docs!=='yes') needs.push('Assemble full docs (tax returns, financials, bank statements).');
+        follow.push({prod, need:needs.join(' '), date:mDate,
+          note:'Re-screen near the 2-year mark with full documentation.'});
+      }
+    }
+  }
+
+  if(S.goal==='mortgage'){
+    const dtiOverCap = (a.m_dti==='high' || a.m_dti==='mid');
+    const empShort = (a.m_emp==='lt2');
+
+    if(a.m_jumbo==='yes'){
+      const prod='Jumbo Mortgage';
+      let level,factor,step;
+      const scoreOK=(a.m_score==='700plus');
+      const downOK=(a.m_down==='10to20'||a.m_down==='20plus');
+      const dtiOK=(a.m_dti==='ok');
+      if(scoreOK && downOK && dtiOK && a.m_emp==='2plus'){
+        level='ok'; factor='700–720+ score, 10–20% down, DTI under 43%, steady 2-yr history. Reserves still required (6–12 months).';
+        step='Proceed; confirm 6–12 months of reserves.';
+      } else {
+        level = (!scoreOK || a.m_down==='lt3' || a.m_down==='3to5') ? 'no':'warn';
+        const gaps=[];
+        if(!scoreOK) gaps.push('score under 700–720');
+        if(!downOK) gaps.push('down payment under 10%');
+        if(!dtiOK) gaps.push('DTI at/over 43%');
+        if(empShort) gaps.push('employment under 2 years');
+        factor='Jumbo thresholds not fully met — '+gaps.join(', ')+'. Also expects 6–12 months reserves.';
+        step = level==='no' ? 'Decline jumbo; consider conforming loan limits or improving the file.'
+                            : 'Escalate to underwriting; tighten the weak factor.';
+      }
+      push(prod,level,factor,step);
+      if(level!=='ok'){
+        const needs=[];
+        if(!scoreOK) needs.push('Raise score to 700–720+.');
+        if(!downOK) needs.push('Increase down payment to 10–20%.');
+        if(!dtiOK) needs.push('Lower DTI under 43%.');
+        if(empShort) needs.push('Reach 2 years of employment history.');
+        needs.push('Build 6–12 months of reserves.');
+        follow.push({prod, need:needs.join(' '), date:addMonths(cd,6),
+          note:'Re-screen once score, down payment, and reserves are in range.'});
+      }
+    } else {
+      // Conforming path
+      if(a.m_score==='lt500'){
+        push('Mortgage','no','Score below 500 — under the FHA floor (500 with 10% down).','Decline; focus on credit repair to 500+ then 580+.');
+        follow.push({prod:'Mortgage', need:'Raise score to at least 500 (580+ unlocks FHA 3.5% down and conventional paths).',
+          date:addMonths(cd,6), note:'Re-screen when score reaches 580+.'});
+      } else if(a.m_score==='500to619'){
+        const prod='Mortgage (FHA / VA path)';
+        let level= dtiOverCap||empShort ? 'warn':'warn';
+        let factor='Score 500–619 — below conventional 620. ';
+        factor += a.m_down==='lt3'||a.m_down==='3to5'
+          ? 'FHA fits: 500 w/ 10% down, or 580 w/ 3.5% down. VA has no min score (lenders want 580–620).'
+          : 'FHA/VA viable; down payment supports FHA or VA.';
+        if(dtiOverCap) factor+=' DTI over the comfortable cap — needs review.';
+        if(empShort) factor+=' Employment under 2 years — needs review.';
+        push(prod,level,factor,'Escalate to an FHA/VA-savvy underwriter; conventional not yet available.');
+        const needs=['Lift score to 620+ for conventional options.'];
+        if(a.m_score==='500to619' && (a.m_down==='lt3')) needs.push('For FHA, reach 580 (3.5% down) or bring 10% down at 500–579.');
+        if(dtiOverCap) needs.push('Bring DTI to 43% or below.');
+        if(empShort) needs.push('Reach 2 years of employment history.');
+        follow.push({prod, need:needs.join(' '), date:addMonths(cd,4),
+          note:'Re-screen when score reaches 620+ for conventional terms.'});
+      } else {
+        // 620+ conventional
+        const prod='Conventional Mortgage';
+        let level='ok';
+        let factor='620+ score';
+        if(a.m_score==='700plus') factor='700+ score — strong file';
+        factor+=', conventional eligible (3% down first-time / 5% repeat, 2-yr income history).';
+        let step='Proceed to pre-approval.';
+        if(a.m_dti==='high'){ level='warn'; factor+=' DTI above 50% — over the cap.'; step='Escalate; DTI over 50% needs compensating factors.'; }
+        else if(a.m_dti==='mid'){ if(level==='ok'){ level='warn'; } factor+=' DTI 43–50% — allowable only with compensating factors.'; step='Escalate to underwriting for compensating-factor review.'; }
+        if(empShort){ if(level==='ok'){ level='warn'; } factor+=' Employment under 2 years — needs review.'; step='Escalate; document income continuity.'; }
+        if(a.m_down==='lt3'){ if(level==='ok'){ level='warn'; } factor+=' Down payment under 3% minimum.'; step='Escalate; needs 3% (first-time) or 5% (repeat) down.'; }
+        push(prod,level,factor,step);
+        if(level!=='ok'){
+          const needs=[];
+          if(dtiOverCap) needs.push('Bring DTI under 43% (or document compensating factors).');
+          if(empShort) needs.push('Reach 2 years of steady employment.');
+          if(a.m_down==='lt3') needs.push('Save to at least 3% down (5% if a repeat buyer).');
+          follow.push({prod, need:needs.join(' '), date:addMonths(cd,3),
+            note:'Re-screen once DTI / employment / down payment are in range.'});
+        }
+      }
+    }
+  }
+
+  return {out, follow};
+}
+
+/* ---------------- Render results ---------------- */
+function levelMeta(l){
+  if(l==='ok') return {icon:'✅',tag:'Likely eligible',cls:'ok'};
+  if(l==='warn') return {icon:'⚠️',tag:'Borderline — needs review',cls:'warn'};
+  return {icon:'❌',tag:'Not eligible',cls:'no'};
+}
+function renderResults(el){
+  const {out, follow}=evaluate();
+  const c=S.client;
+  let html=`
+    <div class="res-head">
+      <div class="q-eyebrow">Pre-screen complete</div>
+      <h2>${esc(c.name||'Client')}</h2>
+      <div class="res-client">${[c.email,c.phone].filter(Boolean).map(esc).join(' • ')||'No contact on file'} &nbsp;·&nbsp; ${fmtDate(c.date)}</div>
+    </div>`;
+
+  out.forEach(v=>{
+    const m=levelMeta(v.level);
+    html+=`
+      <div class="verdict ${m.cls}">
+        <div class="v-top">
+          <div class="v-icon">${m.icon}</div>
+          <div>
+            <div class="v-prod">${esc(v.prod)}</div>
+            <span class="v-tag ${m.cls}">${m.tag}</span>
+          </div>
+        </div>
+        <div class="v-row"><span class="lbl">Limiting factor</span>${esc(v.factor)}</div>
+        <div class="v-row"><span class="lbl">Next step</span>${esc(v.step)}</div>
+      </div>`;
+  });
+
+  html+=`<div class="followup">
+      <h3>📌 Follow-up plan</h3>
+      <p class="fsub">Set a reminder and re-engage when the client qualifies.</p>`;
+  if(follow.length===0){
+    html+=`<div class="fu-empty">No follow-ups needed — all products are a go. Move to the next step now.</div>`;
+  } else {
+    follow.forEach(f=>{
+      html+=`<div class="fu-item">
+        <div class="fu-prod">${esc(f.prod)}</div>
+        <div class="fu-need">${esc(f.need)}</div>
+        <div class="fu-date">🗓️ Re-check ${fmtDate(f.date)}</div>
+        <div class="fu-need" style="margin-top:5px;opacity:.85">${esc(f.note)}</div>
+      </div>`;
+    });
+  }
+  html+=`</div>`;
+
+  html+=`<p class="disclaimer">Estimates based on general 2026 industry thresholds. Final eligibility depends on full underwriting.</p>`;
+
+  html+=`<div class="result-actions">
+      <button class="btn btn-amber" id="dlPdf">⬇ Download PDF report</button>
+      <button class="btn btn-ghost" id="startOver2">Start over</button>
+    </div>`;
+
+  el.innerHTML=html;
+  el.querySelector('#dlPdf').onclick=()=>generatePDF(out,follow);
+  el.querySelector('#startOver2').onclick=startOver;
+}
+
+/* ---------------- PDF ---------------- */
+function generatePDF(out, follow){
+  const doc=new jsPDF({unit:'pt',format:'letter'});
+  const W=doc.internal.pageSize.getWidth();
+  const M=54; let y=0;
+  const navy=[14,36,64], amber=[201,127,30], ink=[11,23,38], muted=[107,118,134];
+  const green=[31,138,91], yellow=[184,134,11], red=[179,64,47];
+  const c=S.client;
+
+  function pageGuard(need){ if(y+need>doc.internal.pageSize.getHeight()-60){ doc.addPage(); y=M; } }
+
+  // Header band
+  doc.setFillColor(...navy); doc.rect(0,0,W,86,'F');
+  doc.setFillColor(...amber); doc.roundedRect(M,26,34,34,7,7,'F');
+  doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('FE', M+17, 48, {align:'center'});
+  doc.setTextColor(255,255,255); doc.setFontSize(15);
+  doc.text('Financing Eligibility Report', M+46, 42);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(157,180,212);
+  doc.text('INTERNAL PRE-SCREEN  ·  PREPARED FOR CLIENT', M+46, 58);
+  y=110;
+
+  // Client block
+  doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(c.name||'Client', M, y); y+=16;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...muted);
+  const contact=[c.email,c.phone].filter(Boolean).join('   ·   ');
+  if(contact){ doc.text(contact, M, y); y+=13; }
+  doc.text('Screening date: '+fmtDate(c.date), M, y); y+=22;
+  doc.setDrawColor(...[227,221,210]); doc.setLineWidth(1); doc.line(M,y,W-M,y); y+=22;
+
+  // Verdicts
+  doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text('Eligibility summary', M, y); y+=8;
+
+  out.forEach(v=>{
+    const m = v.level==='ok'?{c:green,t:'LIKELY ELIGIBLE',mk:'[ OK ]'}
+            : v.level==='warn'?{c:yellow,t:'BORDERLINE - NEEDS REVIEW',mk:'[ ! ]'}
+            : {c:red,t:'NOT ELIGIBLE',mk:'[ X ]'};
+    const factorLines=doc.splitTextToSize(v.factor, W-2*M-16);
+    const stepLines=doc.splitTextToSize(v.step, W-2*M-16);
+    const blockH = 30 + 14 + factorLines.length*12 + 16 + stepLines.length*12 + 16;
+    pageGuard(blockH+10);
+    y+=14;
+    // colored left bar + light card
+    const top=y-2;
+    doc.setFillColor(250,250,250); doc.roundedRect(M, top, W-2*M, blockH, 6,6,'F');
+    doc.setFillColor(...m.c); doc.rect(M, top, 4, blockH, 'F');
+    let yy=top+20;
+    doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(11.5);
+    doc.text(v.prod, M+16, yy);
+    doc.setFontSize(8.5); doc.setTextColor(...m.c); doc.setFont('helvetica','bold');
+    doc.text(m.mk+'  '+m.t, M+16, yy+14);
+    yy+=30;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('LIMITING FACTOR', M+16, yy); yy+=12;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...ink);
+    doc.text(factorLines, M+16, yy); yy+=factorLines.length*12+8;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...muted);
+    doc.text('RECOMMENDED NEXT STEP', M+16, yy); yy+=12;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...ink);
+    doc.text(stepLines, M+16, yy);
+    y = top+blockH+6;
+  });
+
+  // Follow-up plan
+  y+=18; pageGuard(70);
+  doc.setFillColor(...navy); doc.roundedRect(M, y, W-2*M, 30, 6,6,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11.5);
+  doc.text('Follow-up plan', M+14, y+20);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(157,180,212);
+  doc.text('Re-engage the client when they qualify', W-M-14, y+20, {align:'right'});
+  y+=44;
+
+  if(follow.length===0){
+    doc.setTextColor(...ink); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text('No follow-ups needed - all products are a go.', M, y); y+=16;
+  } else {
+    follow.forEach(f=>{
+      const needLines=doc.splitTextToSize(f.need, W-2*M-12);
+      const noteLines=doc.splitTextToSize(f.note, W-2*M-12);
+      const h=16+needLines.length*12+16+noteLines.length*11+10;
+      pageGuard(h+6);
+      doc.setTextColor(...amber); doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+      doc.text(f.prod, M, y); 
+      doc.setTextColor(...ink); doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+      doc.text('Re-check '+fmtDate(f.date), W-M, y, {align:'right'});
+      y+=15;
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...ink);
+      doc.text(needLines, M, y); y+=needLines.length*12+3;
+      doc.setFontSize(9); doc.setTextColor(...muted);
+      doc.text(noteLines, M, y); y+=noteLines.length*11+10;
+      doc.setDrawColor(...[227,221,210]); doc.setLineWidth(.6); doc.line(M,y-4,W-M,y-4);
+      y+=6;
+    });
+  }
+
+  // Footer disclaimer on every page
+  const pages=doc.internal.getNumberOfPages();
+  for(let p=1;p<=pages;p++){
+    doc.setPage(p);
+    const H=doc.internal.pageSize.getHeight();
+    doc.setDrawColor(...[227,221,210]); doc.setLineWidth(.6); doc.line(M,H-44,W-M,H-44);
+    doc.setFont('helvetica','italic'); doc.setFontSize(7.8); doc.setTextColor(...muted);
+    const disc=doc.splitTextToSize('Estimates based on general 2026 industry thresholds. Final eligibility depends on full underwriting.', W-2*M);
+    doc.text(disc, M, H-32);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+    doc.text('Page '+p+' of '+pages, W-M, H-20, {align:'right'});
+  }
+
+  const safe=(c.name||'client').replace(/[^a-z0-9]+/gi,'_').replace(/^_|_$/g,'');
+  doc.save('Eligibility_Prescreen_'+safe+'_'+c.date+'.pdf');
+}
+
+/* ---------------- Navigation engine ---------------- */
+function currentScreen(){ return history[history.length-1]; }
+
+function go(stepId){
+  history.push(stepId);
+  render();
+}
+function back(){
+  if(history.length<=1) return;
+  history.pop();
+  render();
+}
+function startOver(){
+  if(history.length>1 && !confirm('Start over? This clears the current client and answers.')) return;
+  S.client={name:'',email:'',phone:'',date:todayISO()};
+  S.goal=null; S.answers={};
+  history=['intro'];
+  render();
+}
+
+function advanceFrom(stepId){
+  // recompute plan and move to the step after current
+  const plan=buildPlan();
+  const idx=plan.indexOf(stepId);
+  const nextId = plan[idx+1];
+  if(nextId) go(nextId);
+}
+
+function render(){
+  const stepId=currentScreen();
+  const plan=buildPlan();
+  estTotal=plan.length;
+  const idx=Math.max(0, plan.indexOf(stepId));
+
+  // progress
+  const pct = Math.round((idx)/(plan.length-1)*100);
+  bar.style.width = (stepId==='results'?100:pct)+'%';
+
+  const def = SCREENS[stepId]();
+  stepName.textContent = stepId==='results' ? 'Results' : def.name;
+  stepCount.textContent = stepId==='results' ? 'Done' : ('Step '+(idx+1)+' of '+plan.length);
+
+  if(def.results){
+    main.innerHTML=`<div class="screen active" id="scr"></div>`;
+    renderResults(document.getElementById('scr'));
+    window.scrollTo({top:0,behavior:'smooth'});
+    return;
+  }
+
+  // build nav
+  const isAuto = def.autoAdvance;
+  const navHTML = `
+    <div class="nav">
+      ${history.length>1?'<button class="btn btn-ghost" id="backBtn">← Back</button>':''}
+      ${!isAuto?'<button class="btn btn-primary" id="nextBtn">Continue →</button>':''}
+      <button class="btn btn-ghost" id="startBtn" title="Start over">↺</button>
+    </div>`;
+
+  main.innerHTML=`<div class="screen active" id="scr">${def.html}${navHTML}</div>`;
+  const el=document.getElementById('scr');
+
+  if(def.wire) def.wire(el, ()=>advanceFrom(stepId));
+
+  const backBtn=el.querySelector('#backBtn'); if(backBtn) backBtn.onclick=back;
+  const startBtn=el.querySelector('#startBtn'); if(startBtn) startBtn.onclick=startOver;
+  const nextBtn=el.querySelector('#nextBtn');
+  if(nextBtn){
+    nextBtn.onclick=()=>{
+      if(def.next && !def.next(el)) return;
+      advanceFrom(stepId);
+    };
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* boot */
+history=['intro'];
+render();
+</script>
+</body>
+</html>

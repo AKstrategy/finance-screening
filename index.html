@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AK Strategy — Проверка финансирования</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="hdr-inner">
+    <div class="logo-mark">AK</div>
+    <div class="brand-text">
+      <h1>AK Strategy</h1>
+      <p>Financing Eligibility Pre-Screen</p>
+    </div>
+    <span class="hdr-badge" id="hdrBadge">Internal · Sales</span>
+    <button class="lang-btn" id="langToggle" title="Switch language">EN</button>
+  </div>
+  <div class="prog-wrap">
+    <div class="prog-track"><div class="prog-fill" id="bar"></div></div>
+    <div class="step-meta">
+      <span id="stepName">Getting started</span>
+      <span id="stepCount"></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <main id="main"></main>
+  <div class="footnote" id="footNote"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
